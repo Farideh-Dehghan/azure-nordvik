@@ -4,6 +4,23 @@ import os
 import base64
 import json
 
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import ContentSettings
+STORAGE_ACCOUNT_NAME = os.environ.get("STORAGE_ACCOUNT_NAME")
+CONTAINER_NAME = "felanmalan-bilagor"
+
+def get_blob_service_client():
+    if not STORAGE_ACCOUNT_NAME:
+        raise RuntimeError("STORAGE_ACCOUNT_NAME saknas")
+
+    account_url = f"https://{STORAGE_ACCOUNT_NAME}.blob.core.windows.net"
+
+    return BlobServiceClient(
+        account_url=account_url,
+        credential=DefaultAzureCredential()
+    )
+
 def get_user_roles():
     encoded = request.headers.get("X-MS-CLIENT-PRINCIPAL")
     if not encoded:
@@ -82,7 +99,34 @@ def submit():
         if image.mimetype not in ("image/jpeg", "image/png"):
             return "Endast JPG och PNG är tillåtna.", 400
 
-    return "Formuläret mottaget. Ingen data har sparats ännu."
+    
+    if image and image.filename:
+        import uuid
+
+        blob_name = f"{uuid.uuid4()}.jpg"
+        if image.mimetype == "image/png":
+            blob_name = f"{uuid.uuid4()}.png"
+
+        try:
+            blob_service = get_blob_service_client()
+            blob_client = blob_service.get_blob_client(
+                container=CONTAINER_NAME,
+                blob=blob_name
+            )
+
+            blob_client.upload_blob(
+                image.stream,
+                overwrite=False,
+                content_settings=ContentSettings(
+                    content_type=image.mimetype
+                )
+            )
+        except Exception:
+            app.logger.exception("Bilduppladdning misslyckades")
+            return "Kunde inte spara bilden.", 500
+
+    return "Formuläret mottaget. Bilden har sparats om den bifogades."
+
 
 @app.get("/my-role")
 def my_role():
