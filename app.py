@@ -125,8 +125,43 @@ def submit():
             app.logger.exception("Bilduppladdning misslyckades")
             return "Kunde inte spara bilden.", 500
 
-    return "Formuläret mottaget. Bilden har sparats om den bifogades."
+    
 
+    # Spara felanmalan som JSON
+    from datetime import datetime, timezone
+    import uuid
+
+    arende_id = str(uuid.uuid4())
+    arende = {
+        "id": arende_id,
+        "namn": name,
+        "epost": email,
+        "rubrik": title,
+        "beskrivning": message,
+        "bild": blob_name if image and image.filename else None,
+        "skapad": datetime.now(timezone.utc).isoformat(),
+        "status": "Ny"
+    }
+
+    try:
+        blob_service = get_blob_service_client()
+        blob_client = blob_service.get_blob_client(
+            container=CONTAINER_NAME,
+            blob=f"arenden/{arende_id}.json"
+        )
+        blob_client.upload_blob(
+            json.dumps(arende, ensure_ascii=False).encode("utf-8"),
+            overwrite=False,
+            content_settings=ContentSettings(
+                content_type="application/json"
+            )
+        )
+    except Exception:
+        app.logger.exception("Kunde inte spara felanmalan")
+        return "Kunde inte spara arendet.", 500        
+
+
+    return f"Felanmälan registrerad! Ärendenummer: {arende_id}"
 
 @app.get("/my-role")
 def my_role():
