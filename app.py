@@ -73,6 +73,15 @@ def my_role():
         return "Ingen roll hittades", 403
     return "Dina roller: " + ", ".join(roles)
 
+@app.get("/admin")
+def admin_page():
+    roles = get_user_roles()
+
+    if "Administrator" not in roles and "Förvaltare" not in roles:
+        return "Åtkomst nekad", 403
+
+    return "Välkommen till Nordviks administration!"
+
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
