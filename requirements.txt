@@ -1,2 +1,4 @@
 Flask>=3.1,<4
 gunicorn>=23,<24
+azure-identity>=1.17,<2
+azure-storage-blob>=12.20,<13
