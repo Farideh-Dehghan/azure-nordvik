@@ -1,6 +1,29 @@
 
 from flask import Flask, request, render_template_string
-import os
+import os 
+import base64
+import json
+
+def get_user_roles():
+    encoded = request.headers.get("X-MS-CLIENT-PRINCIPAL")
+    if not encoded:
+        return []
+
+    try:
+        principal = json.loads(
+            base64.b64decode(encoded).decode("utf-8")
+        )
+        return [
+            claim.get("val")
+            for claim in principal.get("claims", [])
+            if claim.get("typ") in (
+                "roles",
+                "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+            )
+        ]
+    except (ValueError, TypeError, UnicodeError):
+        return []
+
 
 app = Flask(__name__)
 
@@ -42,6 +65,13 @@ def submit():
         return "Alla fält måste fyllas i.", 400
 
     return "Test lyckades. Ingen data har sparats."
+
+@app.get("/my-role")
+def my_role():
+    roles = get_user_roles()
+    if not roles:
+        return "Ingen roll hittades", 403
+    return "Dina roller: " + ", ".join(roles)
 
 if __name__ == "__main__":
     app.run(
