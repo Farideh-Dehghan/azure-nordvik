@@ -1,0 +1,783 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "sites_web_nordvik_portal327_name": {
+      "defaultValue": "web-nordvik-portal327",
+      "type": "String"
+    },
+    "serverfarms_ASP_rgnordvikdemo_86a2_name": {
+      "defaultValue": "ASP-rgnordvikdemo-86a2",
+      "type": "String"
+    },
+    "storageAccounts_nordvikfel2026x_name": {
+      "defaultValue": "nordvikfel2026x",
+      "type": "String"
+    },
+    "virtualNetworks_vnet_nordvik_demo_name": {
+      "defaultValue": "vnet-nordvik-demo",
+      "type": "String"
+    },
+    "userAssignedIdentities_oidc_msi_ad08_name": {
+      "defaultValue": "oidc-msi-ad08",
+      "type": "String"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2025-05-31-preview",
+      "name": "[parameters('userAssignedIdentities_oidc_msi_ad08_name')]",
+      "location": "swedencentral",
+      "properties": {
+        "isolationScope": "None",
+        "assignmentRestrictions": {
+          "providers": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2025-07-01",
+      "name": "[parameters('virtualNetworks_vnet_nordvik_demo_name')]",
+      "location": "swedencentral",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "encryption": {
+          "enabled": false,
+          "enforcement": "AllowUnencrypted"
+        },
+        "privateEndpointVNetPolicies": "Disabled",
+        "subnets": [
+          {
+            "name": "default",
+            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'default')]",
+            "properties": {
+              "addressPrefixes": [
+                "10.0.0.0/24"
+              ],
+              "serviceEndpoints": [
+                {
+                  "service": "Microsoft.Storage",
+                  "locations": [
+                    "swedencentral",
+                    "swedensouth"
+                  ]
+                }
+              ],
+              "delegations": [],
+              "privateEndpointNetworkPolicies": "Disabled",
+              "privateLinkServiceNetworkPolicies": "Enabled",
+              "defaultOutboundAccess": true
+            }
+          },
+          {
+            "name": "snet-nordvik-webapp",
+            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp')]",
+            "properties": {
+              "addressPrefixes": [
+                "10.0.1.0/26"
+              ],
+              "serviceEndpoints": [
+                {
+                  "service": "Microsoft.Storage",
+                  "locations": [
+                    "swedencentral",
+                    "swedensouth"
+                  ]
+                }
+              ],
+              "delegations": [
+                {
+                  "name": "Microsoft.Web/serverFarms",
+                  "id": "[concat(resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp'), '/delegations/Microsoft.Web/serverFarms')]",
+                  "properties": {
+                    "serviceName": "Microsoft.Web/serverFarms"
+                  },
+                  "type": "Microsoft.Network/virtualNetworks/subnets/delegations"
+                }
+              ],
+              "privateEndpointNetworkPolicies": "Disabled",
+              "privateLinkServiceNetworkPolicies": "Enabled",
+              "defaultOutboundAccess": false
+            }
+          }
+        ],
+        "virtualNetworkPeerings": [],
+        "enableDdosProtection": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2024-11-01",
+      "name": "[parameters('serverfarms_ASP_rgnordvikdemo_86a2_name')]",
+      "location": "Sweden Central",
+      "tags": {
+        "Company": "Nordvik",
+        "Department": "IT",
+        "Project": "Uppgift8",
+        "Enviroment": "Demo"
+      },
+      "sku": {
+        "name": "B1",
+        "tier": "Basic",
+        "size": "B1",
+        "family": "B",
+        "capacity": 1
+      },
+      "kind": "linux",
+      "properties": {
+        "perSiteScaling": false,
+        "elasticScaleEnabled": false,
+        "maximumElasticWorkerCount": 1,
+        "isSpot": false,
+        "reserved": true,
+        "isXenon": false,
+        "hyperV": false,
+        "targetWorkerCount": 0,
+        "targetWorkerSizeId": 0,
+        "zoneRedundant": false,
+        "asyncScalingEnabled": false
+      }
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+      "apiVersion": "2025-05-31-preview",
+      "name": "[concat(parameters('userAssignedIdentities_oidc_msi_ad08_name'), '/oidc-credential-a195')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('userAssignedIdentities_oidc_msi_ad08_name'))]"
+      ],
+      "properties": {
+        "issuer": "https://token.actions.githubusercontent.com",
+        "subject": "repo:Farideh-Dehghan@320986381/azure-nordvik@1411312283:ref:refs/heads/main",
+        "audiences": [
+          "api://AzureADTokenExchange"
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2025-07-01",
+      "name": "[concat(parameters('virtualNetworks_vnet_nordvik_demo_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_vnet_nordvik_demo_name'))]"
+      ],
+      "properties": {
+        "addressPrefixes": [
+          "10.0.0.0/24"
+        ],
+        "serviceEndpoints": [
+          {
+            "service": "Microsoft.Storage",
+            "locations": [
+              "swedencentral",
+              "swedensouth"
+            ]
+          }
+        ],
+        "delegations": [],
+        "privateEndpointNetworkPolicies": "Disabled",
+        "privateLinkServiceNetworkPolicies": "Enabled",
+        "defaultOutboundAccess": true
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2025-07-01",
+      "name": "[concat(parameters('virtualNetworks_vnet_nordvik_demo_name'), '/snet-nordvik-webapp')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_vnet_nordvik_demo_name'))]"
+      ],
+      "properties": {
+        "addressPrefixes": [
+          "10.0.1.0/26"
+        ],
+        "serviceEndpoints": [
+          {
+            "service": "Microsoft.Storage",
+            "locations": [
+              "swedencentral",
+              "swedensouth"
+            ]
+          }
+        ],
+        "delegations": [
+          {
+            "name": "Microsoft.Web/serverFarms",
+            "id": "[concat(resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp'), '/delegations/Microsoft.Web/serverFarms')]",
+            "properties": {
+              "serviceName": "Microsoft.Web/serverFarms"
+            },
+            "type": "Microsoft.Network/virtualNetworks/subnets/delegations"
+          }
+        ],
+        "privateEndpointNetworkPolicies": "Disabled",
+        "privateLinkServiceNetworkPolicies": "Enabled",
+        "defaultOutboundAccess": false
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2026-04-01",
+      "name": "[concat(parameters('storageAccounts_nordvikfel2026x_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_nordvikfel2026x_name'))]"
+      ],
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "properties": {
+        "staticWebsite": {
+          "enabled": false
+        },
+        "containerDeleteRetentionPolicy": {
+          "enabled": true,
+          "days": 7
+        },
+        "cors": {
+          "corsRules": []
+        },
+        "deleteRetentionPolicy": {
+          "allowPermanentDelete": false,
+          "enabled": true,
+          "days": 7
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices",
+      "apiVersion": "2026-04-01",
+      "name": "[concat(parameters('storageAccounts_nordvikfel2026x_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_nordvikfel2026x_name'))]"
+      ],
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "properties": {
+        "protocolSettings": {
+          "smb": {
+            "encryptionInTransit": {
+              "required": true
+            }
+          }
+        },
+        "cors": {
+          "corsRules": []
+        },
+        "shareDeleteRetentionPolicy": {
+          "enabled": true,
+          "days": 7
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices",
+      "apiVersion": "2026-04-01",
+      "name": "[concat(parameters('storageAccounts_nordvikfel2026x_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_nordvikfel2026x_name'))]"
+      ],
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/tableServices",
+      "apiVersion": "2026-04-01",
+      "name": "[concat(parameters('storageAccounts_nordvikfel2026x_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_nordvikfel2026x_name'))]"
+      ],
+      "properties": {
+        "cors": {
+          "corsRules": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/ftp')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "tags": {
+        "Company": "Nordvik",
+        "Department": "IT",
+        "Project": "Uppgift8",
+        "Enviroment": "Demo"
+      },
+      "properties": {
+        "allow": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/scm')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "tags": {
+        "Company": "Nordvik",
+        "Department": "IT",
+        "Project": "Uppgift8",
+        "Enviroment": "Demo"
+      },
+      "properties": {
+        "allow": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/web')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "tags": {
+        "Company": "Nordvik",
+        "Department": "IT",
+        "Project": "Uppgift8",
+        "Enviroment": "Demo"
+      },
+      "properties": {
+        "numberOfWorkers": 1,
+        "defaultDocuments": [
+          "Default.htm",
+          "Default.html",
+          "Default.asp",
+          "index.htm",
+          "index.html",
+          "iisstart.htm",
+          "default.aspx",
+          "index.php",
+          "hostingstart.html"
+        ],
+        "netFrameworkVersion": "v4.0",
+        "linuxFxVersion": "PYTHON|3.12",
+        "requestTracingEnabled": false,
+        "remoteDebuggingEnabled": false,
+        "httpLoggingEnabled": false,
+        "acrUseManagedIdentityCreds": false,
+        "logsDirectorySizeLimit": 35,
+        "detailedErrorLoggingEnabled": false,
+        "publishingUsername": "REDACTED",
+        "scmType": "GitHubAction",
+        "use32BitWorkerProcess": true,
+        "webSocketsEnabled": false,
+        "alwaysOn": false,
+        "appCommandLine": "gunicorn --bind 0.0.0.0:8000 app:app",
+        "managedPipelineMode": "Integrated",
+        "virtualApplications": [
+          {
+            "virtualPath": "/",
+            "physicalPath": "site\\wwwroot",
+            "preloadEnabled": false
+          }
+        ],
+        "loadBalancing": "LeastRequests",
+        "experiments": {
+          "rampUpRules": []
+        },
+        "autoHealEnabled": false,
+        "vnetName": "8d346213-5b28-4e7e-a905-420acb564c2f_snet-nordvik-webapp",
+        "vnetRouteAllEnabled": true,
+        "vnetPrivatePortsCount": 0,
+        "publicNetworkAccess": "Enabled",
+        "localMySqlEnabled": false,
+        "managedServiceIdentityId": 13501,
+        "ipSecurityRestrictions": [
+          {
+            "ipAddress": "Any",
+            "action": "Allow",
+            "priority": 2147483647,
+            "name": "Allow all",
+            "description": "Allow all access"
+          }
+        ],
+        "scmIpSecurityRestrictions": [
+          {
+            "ipAddress": "Any",
+            "action": "Allow",
+            "priority": 2147483647,
+            "name": "Allow all",
+            "description": "Allow all access"
+          }
+        ],
+        "scmIpSecurityRestrictionsUseMain": false,
+        "http20Enabled": false,
+        "minTlsVersion": "1.2",
+        "scmMinTlsVersion": "1.2",
+        "ftpsState": "FtpsOnly",
+        "preWarmedInstanceCount": 0,
+        "elasticWebAppScaleLimit": 0,
+        "functionsRuntimeScaleMonitoringEnabled": false,
+        "minimumElasticInstanceCount": 0,
+        "azureStorageAccounts": {},
+        "http20ProxyFlag": 0
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/3cbfe6cd-44a5-4549-902e-c45a2e0f1ec5')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T18:48:46.4176458Z",
+        "end_time": "2026-10-09T18:49:36.6153038Z",
+        "active": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/3e6611da-d029-4720-9c67-a7734c9724d0')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T17:17:59.5657707Z",
+        "end_time": "2026-10-09T17:19:35.2124659Z",
+        "active": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/479c65ff-48cf-4ae4-8cfb-2f47d254262a')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T17:20:50.387771Z",
+        "end_time": "2026-10-09T17:21:26.0135892Z",
+        "active": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/843fb9f5-f7ad-4858-8d26-70d043bafaf0')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T10:04:03.6393147Z",
+        "end_time": "2026-10-09T10:04:18.1451557Z",
+        "active": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/958e518e-8f59-425e-a0c0-99d381ad4e3a')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T09:43:57.063537Z",
+        "end_time": "2026-10-09T09:44:12.0693911Z",
+        "active": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/971b0336-7acb-440e-bf5e-527f19f49100')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T06:45:54.6751377Z",
+        "end_time": "2026-10-09T06:46:17.5798809Z",
+        "active": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/aeb38c32-e3db-43e6-89b5-d2f91cbe17fa')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T09:17:23.4714175Z",
+        "end_time": "2026-10-09T09:17:44.1805644Z",
+        "active": false
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/deployments",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/d83fa138-91c3-4246-b53b-1858a39f09eb')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "status": 4,
+        "author_email": "N/A",
+        "author": "N/A",
+        "deployer": "OneDeploy",
+        "message": "OneDeploy",
+        "start_time": "2026-10-09T19:50:53.7824552Z",
+        "end_time": "2026-10-09T19:51:30.6589254Z",
+        "active": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/hostNameBindings",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/', parameters('sites_web_nordvik_portal327_name'), '-d2h4adfbarffg7gk.swedencentral-01.azurewebsites.net')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]"
+      ],
+      "properties": {
+        "siteName": "web-nordvik-portal327",
+        "hostNameType": "Verified"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2026-04-01",
+      "name": "[parameters('storageAccounts_nordvikfel2026x_name')]",
+      "location": "swedencentral",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'default')]",
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp')]"
+      ],
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "dualStackEndpointPreference": {
+          "publishIpv6Endpoint": false
+        },
+        "dnsEndpointType": "Standard",
+        "allowedCopyScope": "AAD",
+        "defaultToOAuthAuthentication": true,
+        "publicNetworkAccess": "Enabled",
+        "allowCrossTenantReplication": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": true,
+        "networkAcls": {
+          "ipv6Rules": [],
+          "resourceAccessRules": [],
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [
+            {
+              "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'default')]",
+              "action": "Allow"
+            },
+            {
+              "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp')]",
+              "action": "Allow"
+            }
+          ],
+          "ipRules": [
+            {
+              "value": "95.193.73.3",
+              "action": "Allow"
+            },
+            {
+              "value": "94.234.68.129",
+              "action": "Allow"
+            },
+            {
+              "value": "95.193.72.251",
+              "action": "Allow"
+            },
+            {
+              "value": "87.227.9.138",
+              "action": "Allow"
+            }
+          ],
+          "defaultAction": "Deny"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "requireInfrastructureEncryption": false,
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2026-04-01",
+      "name": "[concat(parameters('storageAccounts_nordvikfel2026x_name'), '/default/felanmalan-bilagor')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccounts_nordvikfel2026x_name'), 'default')]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccounts_nordvikfel2026x_name'))]"
+      ],
+      "properties": {
+        "immutableStorageWithVersioning": {
+          "enabled": false
+        },
+        "defaultEncryptionScope": "$account-encryption-key",
+        "denyEncryptionScopeOverride": false,
+        "publicAccess": "None"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2024-11-01",
+      "name": "[parameters('sites_web_nordvik_portal327_name')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('serverfarms_ASP_rgnordvikdemo_86a2_name'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp')]"
+      ],
+      "tags": {
+        "Company": "Nordvik",
+        "Department": "IT",
+        "Project": "Uppgift8",
+        "Enviroment": "Demo"
+      },
+      "kind": "app,linux",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "enabled": true,
+        "hostNameSslStates": [
+          {
+            "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '-d2h4adfbarffg7gk.scm.swedencentral-01.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "hostType": "Repository"
+          },
+          {
+            "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '-d2h4adfbarffg7gk.swedencentral-01.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "hostType": "Standard"
+          }
+        ],
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('serverfarms_ASP_rgnordvikdemo_86a2_name'))]",
+        "reserved": true,
+        "isXenon": false,
+        "hyperV": false,
+        "dnsConfiguration": {},
+        "outboundVnetRouting": {
+          "allTraffic": false,
+          "applicationTraffic": true,
+          "contentShareTraffic": false,
+          "imagePullTraffic": false,
+          "backupRestoreTraffic": false
+        },
+        "siteConfig": {
+          "numberOfWorkers": 1,
+          "linuxFxVersion": "PYTHON|3.12",
+          "acrUseManagedIdentityCreds": false,
+          "alwaysOn": false,
+          "http20Enabled": false,
+          "functionAppScaleLimit": 0,
+          "minimumElasticInstanceCount": 0
+        },
+        "scmSiteAlsoStopped": false,
+        "clientAffinityEnabled": false,
+        "clientAffinityProxyEnabled": false,
+        "clientCertEnabled": false,
+        "clientCertMode": "Required",
+        "hostNamesDisabled": false,
+        "ipMode": "IPv4",
+        "customDomainVerificationId": "F70284EE2F25D8542CA50153D469B407B038CD6623FE5CEB625987712EC175DB",
+        "containerSize": 0,
+        "dailyMemoryTimeQuota": 0,
+        "httpsOnly": true,
+        "endToEndEncryptionEnabled": false,
+        "redundancyMode": "None",
+        "publicNetworkAccess": "Enabled",
+        "storageAccountRequired": false,
+        "virtualNetworkSubnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp')]",
+        "keyVaultReferenceIdentity": "SystemAssigned",
+        "autoGeneratedDomainNameLabelScope": "TenantReuse"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/virtualNetworkConnections",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(parameters('sites_web_nordvik_portal327_name'), '/8d346213-5b28-4e7e-a905-420acb564c2f_snet-nordvik-webapp')]",
+      "location": "Sweden Central",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('sites_web_nordvik_portal327_name'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp')]"
+      ],
+      "properties": {
+        "vnetResourceId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_vnet_nordvik_demo_name'), 'snet-nordvik-webapp')]",
+        "isSwift": true
+      }
+    }
+  ]
+}
